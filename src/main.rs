@@ -10,6 +10,7 @@ use controllers::{keyboard_input_system, move_camera, CameraResource};
 use lightning::{animate_lightning, setup_lightning, Conductive};
 pub mod controllers;
 pub mod lightning;
+pub mod clouds;
 
 fn main() {
     App::new()
@@ -47,18 +48,23 @@ fn setup(
         Bloom::default(),
     ));
 
-    let sphere_mesh = meshes.add(Mesh::from(Sphere { radius: 1.0 }));
+    for _ in 0..15 {
+        let sphere_mesh: Handle<Mesh> = meshes.add(Mesh::from(Sphere { radius: 1.0 }));
 
-    commands.spawn((
-        Conductive,
-        Mesh3d::from(sphere_mesh),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.8, 0.8, 0.8),
-            unlit: true,
-            ..Default::default()
-        })),
-    ));
+        let x = rand::random::<f32>() * 30.0 - 30.0;
+        let y = rand::random::<f32>() * 30.0 - 30.0;
+        let z = rand::random::<f32>() * 30.0 - 30.0;
+        commands.spawn((
+            Conductive,
+            Mesh3d::from(sphere_mesh),
+            Transform::from_xyz(x, y, z),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.8, 0.8, 0.8),
+                unlit: true,
+                ..Default::default()
+            })),
+        ));
+    }
 
     commands.insert_resource(CameraResource { zoom: 300.0 });
 }
