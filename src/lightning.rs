@@ -1,12 +1,6 @@
 use std::time::Duration;
 
-use bevy::{
-    color::palettes::{
-        css::*,
-        tailwind::{BLUE_100, BLUE_700},
-    },
-    prelude::*,
-};
+use bevy::{color::palettes::css::*, prelude::*};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
@@ -61,8 +55,8 @@ pub struct Lightning {
 pub struct Rod;
 
 pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<StandardMaterial>>) {
-    let from = Vec3::Y * 100.0;
-
+    let mut from = Vec3::Y * 1000.0;
+    from += Vec3::X * rand::thread_rng().gen_range(-300.0..300.0);
     let scaled_white = LinearRgba::from(BLUE) * 20.;
     let scaled_orange = LinearRgba::from(PURPLE) * 10.;
     let emissive = LinearRgba {
@@ -79,10 +73,10 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
 
     commands.spawn(Lightning {
         last_points: vec![from],
-        remaining_iterations: 50,
+        remaining_iterations: 100,
         material: MeshMaterial3d(material.clone()),
         handle_material: material.clone(),
-        timer: Timer::from_seconds(0.005, TimerMode::Repeating),
+        timer: Timer::from_seconds(0.0001, TimerMode::Repeating),
         rods: vec![],
     });
 }
@@ -102,80 +96,85 @@ pub fn animate_lightning(
         }
         lightning.timer.reset();
         // S'arrêter si on a déjà fait toutes les itérations
-        if lightning.remaining_iterations == 0 {
-            for rod in lightning.rods.clone() {
-                let mut e = commands.entity(rod);
-                e.try_despawn();
+        for _ in 0..5 {
+            if lightning.remaining_iterations == 0 {
+                for rod in lightning.rods.clone() {
+                    let mut e = commands.entity(rod);
+                    e.try_despawn();
+                }
+                commands.entity(entity).despawn();
+                break;
             }
-            commands.entity(entity).despawn();
-            continue;
-        }
-        let material = materials.get_mut(&lightning.handle_material).unwrap();
-        material.emissive *= 1.3;
-        let mut new_points = vec![];
-        let mut rng = rand::thread_rng();
+            let material = materials.get_mut(&lightning.handle_material).unwrap();
+            material.emissive *= 1.01;
+            let mut new_points = vec![];
+            let mut rng = rand::thread_rng();
 
-        'main: for last_point in lightning.last_points.clone() {
-            let closest_conductive = query
-                .iter()
-                .min_by_key(|transofrm| {
-                    let dist = (transofrm.translation - last_point).length();
-                    dist as i32
-                })
-                .unwrap();
+            'main: for last_point in lightning.last_points.clone() {
+                let closest_conductive = query
+                    .iter()
+                    .map(|transform| transform.translation)
+                    .map(|pos| {
+                        let dist = (1.0 / (pos - last_point).length().powi(2)).clamp(1e-6, 1e12);
+                        (dist, pos)
+                    })
+                    .fold((0.0, Vec3::ZERO), |(sd, sv), (d, v)| (sd + d, sv + d * v));
+                let closest_conductive = closest_conductive.1 / closest_conductive.0;
 
-            let direction = closest_conductive.translation - last_point;
-            let remaining_distance = direction.length();
-            let normal = Normal::new(0.0, (remaining_distance / 100.0).min(0.3)).unwrap();
+                let direction = closest_conductive;
+                let remaining_distance = direction.length();
+                let normal =
+                    Normal::new(0.0, (remaining_distance / 500.0).clamp(0.01, 0.4)).unwrap();
 
-            let direction = direction.normalize();
+                let direction = direction.normalize();
 
-            let min_amount_of_points = if new_points.is_empty() { 1 } else { 0 };
-            let amount_of_points = rng.gen_range(min_amount_of_points..=2);
-            for _ in 0..amount_of_points {
-                let direction_noised = direction
-                    + Vec3::new(
-                        normal.sample(&mut rng),
-                        normal.sample(&mut rng),
-                        normal.sample(&mut rng),
+                let min_amount_of_points = if new_points.is_empty() { 1 } else { 0 };
+                let amount_of_points = rng.gen_range(min_amount_of_points..=2);
+                for _ in 0..amount_of_points {
+                    let direction_noised = direction
+                        + Vec3::new(
+                            normal.sample(&mut rng),
+                            normal.sample(&mut rng),
+                            normal.sample(&mut rng),
+                        );
+
+                    let (d, finished) = if remaining_distance < 30.0 {
+                        (remaining_distance, true)
+                    } else {
+                        (rng.gen_range(30.0..=remaining_distance.min(30.0)), false)
+                    };
+
+                    let next_point = last_point + direction_noised * d;
+
+                    new_points.push(next_point);
+
+                    // Appel à votre fonction draw_segment
+                    draw_segment(
+                        &mut lightning,
+                        &mut commands,
+                        &mut meshes,
+                        last_point,
+                        next_point,
                     );
 
-                let (d, finished) = if remaining_distance < 5.0 {
-                    (remaining_distance, true)
-                } else {
-                    (rng.gen_range(5.0..=remaining_distance.min(30.0)), false)
-                };
-
-                let next_point = last_point + direction_noised * d;
-
-                new_points.push(next_point);
-
-                // Appel à votre fonction draw_segment
-                draw_segment(
-                    &mut lightning,
-                    &mut commands,
-                    &mut meshes,
-                    last_point,
-                    next_point,
-                );
-
-                if finished {
-                    new_points.clear();
-                    break 'main;
+                    if finished {
+                        new_points.clear();
+                        break 'main;
+                    }
                 }
             }
-        }
 
-        if new_points.is_empty() {
-            // Remove the lightning
-            lightning.remaining_iterations = 0;
-        }
-        lightning.last_points = new_points;
-        lightning.remaining_iterations = lightning.remaining_iterations.saturating_sub(1);
-        if lightning.remaining_iterations == 0 {
-            lightning.timer.set_duration(Duration::from_millis(100));
-            lightning.timer.reset();
-            material.emissive *= 5.0;
+            if new_points.is_empty() {
+                // Remove the lightning
+                lightning.remaining_iterations = 0;
+            }
+            lightning.last_points = new_points;
+            lightning.remaining_iterations = lightning.remaining_iterations.saturating_sub(1);
+            if lightning.remaining_iterations == 0 {
+                lightning.timer.set_duration(Duration::from_millis(150));
+                lightning.timer.reset();
+                material.emissive *= 10.0;
+            }
         }
     }
 }
