@@ -6,14 +6,19 @@ use bevy::{
         view::{ColorGrading, ColorGradingGlobal},
     },
 };
+use controllers::{keyboard_input_system, move_camera, CameraResource};
 use lightning::{animate_lightning, setup_lightning, Conductive};
+pub mod controllers;
 pub mod lightning;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, (setup, setup_lightning))
-        .add_systems(Update, animate_lightning)
+        .add_systems(
+            Update,
+            (animate_lightning, move_camera, keyboard_input_system),
+        )
         .run();
 }
 
@@ -54,4 +59,6 @@ fn setup(
             ..Default::default()
         })),
     ));
+
+    commands.insert_resource(CameraResource { zoom: 300.0 });
 }
