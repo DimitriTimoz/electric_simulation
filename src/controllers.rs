@@ -57,7 +57,7 @@ fn setup_camera_system(mut commands: Commands) {
                 hdr: true,
                 ..default()
             },
-            Transform::from_xyz(0.0, 300.0, 1000.0).looking_at(Vec3::ZERO, Vec3::Y),
+            Transform::from_xyz(0.0, 300.0, 1300.0).looking_at(Vec3::ZERO, Vec3::Y),
             ColorGrading {
                 global: ColorGradingGlobal {
                     post_saturation: 1.2,
@@ -88,7 +88,7 @@ fn camera_movement_system(
 
         let mut velocity = Vec3::ZERO;
         // Forward/Back
-        if keyboard.pressed(KeyCode::KeyA) {
+        if keyboard.pressed(KeyCode::KeyW) {
             velocity += forward;
         }
         if keyboard.pressed(KeyCode::KeyS) {
@@ -129,6 +129,10 @@ fn camera_movement_system(
 
     if keyboard.just_released(KeyCode::Space) {
         setup_lightning(commands, materials);
+    }
+
+    if keyboard.just_released(KeyCode::Escape) {
+        std::process::exit(0);
     }
 }
 
