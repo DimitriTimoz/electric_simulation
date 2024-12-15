@@ -1,12 +1,4 @@
-use bevy::{
-    core_pipeline::{bloom::Bloom, tonemapping::Tonemapping},
-    prelude::*,
-    render::{
-        camera::Exposure,
-        view::{ColorGrading, ColorGradingGlobal},
-    },
-};
-use controllers::{keyboard_input_system, move_camera, CameraResource};
+use bevy::prelude::*;
 use lightning::{animate_lightning, setup_lightning, Conductive};
 use rand::Rng;
 pub mod clouds;
@@ -15,13 +7,10 @@ pub mod lightning;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, controllers::CameraControllerPlugin))
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_systems(Startup, (setup, setup_lightning))
-        .add_systems(
-            Update,
-            (animate_lightning, move_camera, keyboard_input_system),
-        )
+        .add_systems(Update, animate_lightning)
         .run();
 }
 
@@ -30,25 +19,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Add a camera
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            hdr: true,
-            ..default()
-        },
-        Transform::from_xyz(300.0, 150.8, 10.0).looking_at(Vec3::ZERO + Vec3::Y * 30.0, Vec3::Y),
-        ColorGrading {
-            global: ColorGradingGlobal {
-                post_saturation: 1.2,
-                ..default()
-            },
-            ..default()
-        },
-        Tonemapping::TonyMcMapface,
-        Exposure { ev100: 6.0 },
-        Bloom::default(),
-    ));
+ 
 
     let angle_range = (-135.0f32).to_radians()..-45.0f32.to_radians();
     let rng = &mut rand::thread_rng();
@@ -75,6 +46,4 @@ fn setup(
             })),
         ));
     }
-
-    commands.insert_resource(CameraResource { zoom: 500.0 });
 }
