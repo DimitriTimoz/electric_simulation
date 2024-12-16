@@ -49,6 +49,7 @@ pub struct Lightning {
     handle_material: Handle<StandardMaterial>,
     timer: Timer,
     rods: Vec<Entity>,
+    touched: bool,
 }
 
 #[derive(Component)]
@@ -67,6 +68,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
     };
     let material = materials.add(StandardMaterial {
         emissive,
+        base_color: Color::BLACK,
         diffuse_transmission: 1.0,
         ..default()
     });
@@ -78,6 +80,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
         handle_material: material.clone(),
         timer: Timer::from_seconds(0.001, TimerMode::Repeating),
         rods: vec![],
+        touched: false,
     });
 }
 
@@ -90,7 +93,18 @@ pub fn animate_lightning(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, mut lightning) in query_lightning.iter_mut() {
+        let material = materials.get_mut(&lightning.handle_material).unwrap();
+
         lightning.timer.tick(time.delta());
+        if lightning.remaining_iterations == 0 {
+            if !lightning.touched && lightning.timer.finished() {
+                lightning.touched = true;
+            } else {
+                material.emissive *= 0.75;
+                continue;
+            }
+        }
+
         if !lightning.timer.finished() {
             continue;
         }
@@ -105,7 +119,6 @@ pub fn animate_lightning(
                 commands.entity(entity).despawn();
                 break;
             }
-            let material = materials.get_mut(&lightning.handle_material).unwrap();
             material.emissive *= 1.01;
             let mut new_points = vec![];
             let mut rng = rand::thread_rng();
@@ -142,7 +155,7 @@ pub fn animate_lightning(
                         (remaining_distance, true)
                     } else {
                         (
-                            rng.gen_range(20.0..=remaining_distance.max(21.0).min(50.0)),
+                            rng.gen_range(20.0..=remaining_distance.clamp(21.0, 50.0)),
                             false,
                         )
                     };
@@ -173,9 +186,9 @@ pub fn animate_lightning(
             lightning.last_points = new_points;
             lightning.remaining_iterations = lightning.remaining_iterations.saturating_sub(1);
             if lightning.remaining_iterations == 0 {
-                lightning.timer.set_duration(Duration::from_millis(200));
+                lightning.timer.set_duration(Duration::from_millis(300));
                 lightning.timer.reset();
-                material.emissive *= 10.0;
+                material.emissive *= 30.0;
             }
         }
     }
