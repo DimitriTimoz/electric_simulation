@@ -4,10 +4,15 @@ use rand::Rng;
 pub mod clouds;
 pub mod controllers;
 pub mod lightning;
+pub mod moon;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, controllers::CameraControllerPlugin))
+        .add_plugins((
+            DefaultPlugins,
+            controllers::CameraControllerPlugin,
+            moon::MoonPlugin,
+        ))
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_systems(Startup, (setup, setup_lightning))
         .add_systems(Update, animate_lightning)
@@ -19,8 +24,6 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
- 
-
     let angle_range = (-135.0f32).to_radians()..-45.0f32.to_radians();
     let rng = &mut rand::thread_rng();
     for _ in 0..50 {

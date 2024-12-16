@@ -73,7 +73,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
 
     commands.spawn(Lightning {
         last_points: vec![from],
-        remaining_iterations: 100,
+        remaining_iterations: 70,
         material: MeshMaterial3d(material.clone()),
         handle_material: material.clone(),
         timer: Timer::from_seconds(0.0001, TimerMode::Repeating),
@@ -115,7 +115,7 @@ pub fn animate_lightning(
                     .iter()
                     .map(|transform| transform.translation)
                     .map(|pos| {
-                        let dist = (1.0 / (pos - last_point).length().powi(2)).clamp(1e-6, 1e12);
+                        let dist = 1.0 / (pos - last_point).length().powi(2);
                         (dist, pos)
                     })
                     .fold((0.0, Vec3::ZERO), |(sd, sv), (d, v)| (sd + d, sv + d * v));
@@ -141,7 +141,7 @@ pub fn animate_lightning(
                     let (d, finished) = if remaining_distance < 30.0 {
                         (remaining_distance, true)
                     } else {
-                        (rng.gen_range(30.0..=remaining_distance.min(30.0)), false)
+                        (rng.gen_range(30.0..=remaining_distance.min(50.0)), false)
                     };
 
                     let next_point = last_point + direction_noised * d;
