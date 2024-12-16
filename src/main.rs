@@ -1,13 +1,17 @@
-use bevy::prelude::*;
+#[cfg(debug_assertions)]
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::{diagnostic::LogDiagnosticsPlugin, prelude::*};
 use lightning::{animate_lightning, setup_lightning, Conductive};
 use rand::Rng;
+
 pub mod clouds;
 pub mod controllers;
 pub mod lightning;
 pub mod moon;
 
 fn main() {
-    App::new()
+    let mut binding = App::new();
+    let app = binding
         .add_plugins((
             DefaultPlugins,
             controllers::CameraControllerPlugin,
@@ -15,8 +19,10 @@ fn main() {
         ))
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_systems(Startup, (setup, setup_lightning))
-        .add_systems(Update, animate_lightning)
-        .run();
+        .add_systems(Update, animate_lightning);
+    #[cfg(debug_assertions)]
+    app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()));
+    app.run();
 }
 
 fn setup(

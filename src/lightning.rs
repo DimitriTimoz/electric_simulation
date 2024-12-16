@@ -68,7 +68,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
     };
     let material = materials.add(StandardMaterial {
         emissive,
-        base_color: Color::BLACK,
+        base_color: Color::WHITE,
         diffuse_transmission: 1.0,
         ..default()
     });
@@ -78,7 +78,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
         remaining_iterations: 70,
         material: MeshMaterial3d(material.clone()),
         handle_material: material.clone(),
-        timer: Timer::from_seconds(0.001, TimerMode::Repeating),
+        timer: Timer::from_seconds(0.0001, TimerMode::Repeating),
         rods: vec![],
         touched: false,
     });
@@ -100,7 +100,7 @@ pub fn animate_lightning(
             if !lightning.touched && lightning.timer.finished() {
                 lightning.touched = true;
             } else {
-                material.emissive *= 0.75;
+                material.emissive *= 1.0 - (0.5 * time.delta_secs());
                 continue;
             }
         }
@@ -109,9 +109,12 @@ pub fn animate_lightning(
             continue;
         }
         lightning.timer.reset();
+        if !lightning.touched {
+            material.emissive *= 1.00 + 0.5 * time.delta_secs();
+        }
         // S'arrêter si on a déjà fait toutes les itérations
-        for _ in 0..1 {
-            if lightning.remaining_iterations == 0 {
+        for _ in 0..3 {
+            if lightning.touched && lightning.remaining_iterations == 0 {
                 for rod in lightning.rods.clone() {
                     let mut e = commands.entity(rod);
                     e.try_despawn();
@@ -119,7 +122,6 @@ pub fn animate_lightning(
                 commands.entity(entity).despawn();
                 break;
             }
-            material.emissive *= 1.01;
             let mut new_points = vec![];
             let mut rng = rand::thread_rng();
 
