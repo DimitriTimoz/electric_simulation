@@ -76,7 +76,7 @@ pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<Stan
         remaining_iterations: 70,
         material: MeshMaterial3d(material.clone()),
         handle_material: material.clone(),
-        timer: Timer::from_seconds(0.0001, TimerMode::Repeating),
+        timer: Timer::from_seconds(0.001, TimerMode::Repeating),
         rods: vec![],
     });
 }
@@ -96,7 +96,7 @@ pub fn animate_lightning(
         }
         lightning.timer.reset();
         // S'arrêter si on a déjà fait toutes les itérations
-        for _ in 0..5 {
+        for _ in 0..1 {
             if lightning.remaining_iterations == 0 {
                 for rod in lightning.rods.clone() {
                     let mut e = commands.entity(rod);
@@ -121,7 +121,8 @@ pub fn animate_lightning(
                     .fold((0.0, Vec3::ZERO), |(sd, sv), (d, v)| (sd + d, sv + d * v));
                 let closest_conductive = closest_conductive.1 / closest_conductive.0;
 
-                let direction = closest_conductive;
+                // Correctly compute the direction from last_point to closest_conductive
+                let direction = closest_conductive - last_point;
                 let remaining_distance = direction.length();
                 let normal =
                     Normal::new(0.0, (remaining_distance / 500.0).clamp(0.01, 0.4)).unwrap();
@@ -137,18 +138,19 @@ pub fn animate_lightning(
                             normal.sample(&mut rng),
                             normal.sample(&mut rng),
                         );
-
-                    let (d, finished) = if remaining_distance < 30.0 {
+                    let (d, finished) = if remaining_distance < 5.0 {
                         (remaining_distance, true)
                     } else {
-                        (rng.gen_range(30.0..=remaining_distance.min(50.0)), false)
+                        (
+                            rng.gen_range(20.0..=remaining_distance.max(21.0).min(50.0)),
+                            false,
+                        )
                     };
 
                     let next_point = last_point + direction_noised * d;
 
                     new_points.push(next_point);
 
-                    // Appel à votre fonction draw_segment
                     draw_segment(
                         &mut lightning,
                         &mut commands,
@@ -171,7 +173,7 @@ pub fn animate_lightning(
             lightning.last_points = new_points;
             lightning.remaining_iterations = lightning.remaining_iterations.saturating_sub(1);
             if lightning.remaining_iterations == 0 {
-                lightning.timer.set_duration(Duration::from_millis(150));
+                lightning.timer.set_duration(Duration::from_millis(200));
                 lightning.timer.reset();
                 material.emissive *= 10.0;
             }
