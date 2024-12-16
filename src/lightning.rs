@@ -1,8 +1,27 @@
 use std::time::Duration;
 
-use bevy::{color::palettes::css::*, prelude::*};
+use bevy::{color::palettes::css::*, prelude::*, render::render_resource::AsBindGroup};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
+
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+pub struct LightningMaterial {
+    #[uniform(0)]
+    pub material_color: LinearRgba, // Base color of the lightning
+    #[uniform(1)]
+    pub emissive: f32, // Emissive strength for the lightning glow
+    pub alpha_mode: AlphaMode, // Transparency handling
+}
+
+impl Material for LightningMaterial {
+    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
+        "shaders/lightning_material.wgsl".into()
+    }
+
+    fn alpha_mode(&self) -> AlphaMode {
+        self.alpha_mode
+    }
+}
 
 #[derive(Component)]
 pub struct Conductive;
@@ -45,8 +64,8 @@ fn draw_segment(
 pub struct Lightning {
     remaining_iterations: u32,
     last_points: Vec<Vec3>,
-    material: MeshMaterial3d<StandardMaterial>,
-    handle_material: Handle<StandardMaterial>,
+    material: MeshMaterial3d<LightningMaterial>,
+    handle_material: Handle<LightningMaterial>,
     timer: Timer,
     rods: Vec<Entity>,
     touched: bool,
@@ -55,22 +74,16 @@ pub struct Lightning {
 #[derive(Component)]
 pub struct Rod;
 
-pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<StandardMaterial>>) {
+pub fn setup_lightning(mut commands: Commands, mut materials: ResMut<Assets<LightningMaterial>>) {
     let mut from = Vec3::Y * 1000.0;
     from += Vec3::X * rand::thread_rng().gen_range(-300.0..300.0);
     let scaled_white = LinearRgba::from(BLUE) * 20.;
     let scaled_orange = LinearRgba::from(PURPLE) * 10.;
-    let emissive = LinearRgba {
-        red: scaled_white.red + scaled_orange.red,
-        green: scaled_white.green + scaled_orange.green,
-        blue: scaled_white.blue + scaled_orange.blue,
-        alpha: 1.0,
-    };
-    let material = materials.add(StandardMaterial {
-        emissive,
-        base_color: Color::WHITE,
-        diffuse_transmission: 1.0,
-        ..default()
+
+    let material = materials.add(LightningMaterial {
+        material_color: LinearRgba::from(Color::srgb(0.4, 0.4, 1.0)),
+        alpha_mode: AlphaMode::Premultiplied,
+        emissive: 1.0,
     });
 
     commands.spawn(Lightning {
@@ -90,7 +103,7 @@ pub fn animate_lightning(
     mut query_lightning: Query<(Entity, &mut Lightning)>,
     mut meshes: ResMut<Assets<Mesh>>,
     time: Res<Time>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<LightningMaterial>>,
 ) {
     for (entity, mut lightning) in query_lightning.iter_mut() {
         let material = materials.get_mut(&lightning.handle_material).unwrap();

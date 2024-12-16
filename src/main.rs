@@ -1,7 +1,7 @@
 #[cfg(debug_assertions)]
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::{diagnostic::LogDiagnosticsPlugin, prelude::*};
-use lightning::{animate_lightning, setup_lightning, Conductive};
+use lightning::{animate_lightning, setup_lightning, Conductive, LightningMaterial};
 use rand::Rng;
 
 pub mod clouds;
@@ -17,6 +17,7 @@ fn main() {
             controllers::CameraControllerPlugin,
             moon::MoonPlugin,
         ))
+        .add_plugins(MaterialPlugin::<LightningMaterial>::default())
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .add_systems(Startup, (setup, setup_lightning))
         .add_systems(Update, animate_lightning);

@@ -8,7 +8,7 @@ use bevy::{
     },
 };
 
-use crate::lightning::setup_lightning;
+use crate::lightning::{setup_lightning, LightningMaterial};
 pub struct CameraControllerPlugin;
 
 impl Plugin for CameraControllerPlugin {
@@ -57,17 +57,8 @@ fn setup_camera_system(mut commands: Commands) {
                 hdr: true,
                 ..default()
             },
-            Transform::from_xyz(0.0, 300.0, 1300.0).looking_at(Vec3::ZERO, Vec3::Y),
-            ColorGrading {
-                global: ColorGradingGlobal {
-                    post_saturation: 1.2,
-                    ..default()
-                },
-                ..default()
-            },
-            Tonemapping::TonyMcMapface,
-            Exposure { ev100: 6.0 },
             Bloom::default(),
+            Transform::from_xyz(0.0, 300.0, 1300.0).looking_at(Vec3::ZERO, Vec3::Y),
         ))
         .insert(Name::new("MainCamera"));
 }
@@ -78,7 +69,7 @@ fn camera_movement_system(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Camera3d>>,
-    materials: ResMut<Assets<StandardMaterial>>,
+    materials: ResMut<Assets<LightningMaterial>>,
     controller: ResMut<CameraController>,
 ) {
     for mut transform in query.iter_mut() {
@@ -120,7 +111,6 @@ fn camera_movement_system(
         }
 
         transform.translation += velocity * controller.speed * time.delta_secs();
-
         // Update rotation based on pitch/yaw stored in the controller
         let yaw_quat = Quat::from_rotation_y(controller.yaw);
         let pitch_quat = Quat::from_rotation_x(controller.pitch);
@@ -146,7 +136,6 @@ fn camera_mouse_input_system(
         for event in motion_events.read() {
             controller.yaw -= event.delta.x * controller.sensitivity * 0.01;
             controller.pitch -= event.delta.y * controller.sensitivity * 0.01;
-
             // Clamp pitch so we don't flip over
             controller.pitch = controller.pitch.clamp(-1.54, 1.54);
         }
